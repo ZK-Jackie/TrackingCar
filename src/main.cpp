@@ -31,6 +31,7 @@ int TrackSensorValue3;
 int TrackSensorValue4;
 
 // 计时，单位为毫秒
+volatile int running = 0;
 volatile int timerCnt = 0;
 volatile int interval = 0;
 volatile int lineCnt = 0;
@@ -69,9 +70,10 @@ void setup() {
 
 void timerIsr() {
 	timerCnt += 1;
-//	String str = String(timerCnt);
-//	bluetoothSerial.println(str);    // 发送信息
-	if (interval > 0){
+	if(timerCnt % 10 == 0){
+		bluetoothSerial.print(String(timerCnt / 10));
+	}
+	if (interval > 0) {
 		interval -= 1;
 	}
 	if (timerCnt == 1000) {
@@ -178,20 +180,41 @@ void route1() {
 //		}
 	else if (TrackSensorValue1 == HIGH && TrackSensorValue2 == HIGH && TrackSensorValue3 == HIGH &&
 			 TrackSensorValue4 == HIGH && timerCnt > 130) {
-		while (1) {
-			brake(1);
-		}
+		brake(1);
+		running = 0;
+		return;
 	} else if (TrackSensorValue2 == HIGH || TrackSensorValue3 == HIGH) {
 		run(51 * speed_rate, 51 * speed_rate);
 	}
 	delay(2);
 }
 
+
 void route2() {
-	// 起始时
-	if (timerCnt < 5) {
+	// 起始时 0.3s
+	if (timerCnt < 3) {
 		run(51 * speed_rate, 51 * speed_rate);
 		return;
+	}
+	if ((timerCnt > 90 && timerCnt < 110) || timerCnt > 170) {
+		if (TrackSensorValue1 + TrackSensorValue2 + TrackSensorValue3 + TrackSensorValue4 >= 3 && interval == 0) {
+			bluetoothSerial.print('o');
+			interval = 5;
+			lineCnt++;
+			if (lineCnt == 1) {
+				bluetoothSerial.print('a');
+				run(20 * speed_rate, 20 * speed_rate);
+				delay(200);
+			} else if (lineCnt == 2) {
+				bluetoothSerial.print('b');
+				goto right;
+			} else if (lineCnt == 3) {
+				bluetoothSerial.print('c');
+				brake(1);
+				running = 0;
+				return;
+			}
+		}
 	}
 
 	TrackSensorValue1 = digitalRead(TrackSensor1);
@@ -199,42 +222,45 @@ void route2() {
 	TrackSensorValue3 = digitalRead(TrackSensor3);
 	TrackSensorValue4 = digitalRead(TrackSensor4);
 
-	if (TrackSensorValue1 == HIGH && TrackSensorValue2 == HIGH && TrackSensorValue3 == HIGH &&
-		TrackSensorValue4 == HIGH && interval == 0) {
-		interval = 5;
-		lineCnt++;
-		if (lineCnt == 1) {
-			goto direct;
-		} else if (lineCnt == 2) {
-			goto right;
-		} else if (lineCnt == 3) {
-			while (1){
-				brake(1);
-			}
-		}
-	}
-	if (timerCnt < 90 && timerCnt > 80) {
-		goto direct;
-	}
-
 	if (TrackSensorValue1 == HIGH && (TrackSensorValue3 == HIGH || TrackSensorValue4 == HIGH)) {
+		if(timerCnt < 110 && timerCnt > 90 && lineCnt == 0){
+			goto direct;
+		}
 		spin_left(51 * speed_rate, 51 * speed_rate);
 		delay(150);
 	} else if (TrackSensorValue1 == HIGH) {
+		if(timerCnt < 110 && timerCnt > 90 && lineCnt == 0){
+			goto direct;
+		}
 		spin_left(51 * speed_rate, 51 * speed_rate);
 		delay(2);
-	} else if ((/*TrackSensorValue1 == HIGH ||*/ TrackSensorValue2 == HIGH) && TrackSensorValue4 == HIGH && timerCnt > 7) {
+	} else if ((/*TrackSensorValue1 == HIGH ||*/ TrackSensorValue2 == HIGH) && TrackSensorValue4 == HIGH &&
+			   timerCnt > 7) {
 		right:
+		if(timerCnt < 110 && timerCnt > 90 && lineCnt == 0){
+			goto direct;
+		}
 		spin_right(51 * speed_rate, 51 * speed_rate);
 		delay(150);
 	} else if (TrackSensorValue4 == HIGH && timerCnt > 7) {
+		if(timerCnt < 110 && timerCnt > 90 && lineCnt == 0){
+			goto direct;
+		}
 		spin_right(51 * speed_rate, 51 * speed_rate);
 		delay(2);
 	} else if (TrackSensorValue1 == LOW && TrackSensorValue2 == HIGH && TrackSensorValue3 == LOW &&
 			   TrackSensorValue4 == LOW) {
+		if (timerCnt < 110 && timerCnt > 70 && lineCnt == 0) {
+			left(30 * speed_rate, 30 * speed_rate);
+			return;
+		}
 		left(44 * speed_rate, 44 * speed_rate);
 	} else if (TrackSensorValue1 == LOW && TrackSensorValue2 == LOW && TrackSensorValue3 == HIGH &&
 			   TrackSensorValue4 == LOW) {
+		if (timerCnt < 110 && timerCnt > 70 && lineCnt == 0) {
+			right(30 * speed_rate, 30 * speed_rate);
+			return;
+		}
 		right(44 * speed_rate, 44 * speed_rate);
 	} else if (TrackSensorValue2 == HIGH && TrackSensorValue3 == HIGH) {
 		direct:
@@ -243,7 +269,22 @@ void route2() {
 }
 
 
+void ifStart() {
+	while (1) {
+		if (bluetoothSerial.available()) {
+			bluetoothSerial.read();
+			timerCnt = 0;
+			lineCnt = 0;
+			break;
+		}
+	}
+}
+
 void loop() {
+	if (running == 0) {
+		ifStart();
+		running = 1;
+	}
 //	route1();
 	route2();
 }
