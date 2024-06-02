@@ -7,6 +7,7 @@ void timerIsr();
 
 // 取值 [1, 5]
 int speed_rate = 3;
+double buff = 1;
 
 int LEFT_MOTOR_ENA = 3;            //左电机使能 + PWM脉冲输出端口
 int LEFT_MOTOR_IN1 = 2;            //左电机方向，0->前进，1->后退
@@ -155,8 +156,25 @@ void spin_right(int left_speed, int right_speed) {
 void route1() {
 	// 起始时
 	if (timerCnt < 7) {
-		run(51 * speed_rate, 51 * speed_rate);
+		run(51 * speed_rate, 51 * speed_rate * buff);
 		return;
+	}
+	if (timerCnt > 190) {
+		if (TrackSensorValue1 + TrackSensorValue2 + TrackSensorValue3 + TrackSensorValue4 >= 3 && interval == 0) {
+			bluetoothSerial.print('o');
+			interval = 2;
+			lineCnt++;
+			if (lineCnt == 1) {
+				bluetoothSerial.print('a');
+				run(20 * speed_rate, 20 * speed_rate * buff);
+				delay(100);
+			} else if (lineCnt == 2) {
+				bluetoothSerial.print('b');
+				brake(1);
+				running = 0;
+				return;
+			}
+		}
 	}
 
 	TrackSensorValue1 = digitalRead(TrackSensor1);
@@ -165,10 +183,10 @@ void route1() {
 	TrackSensorValue4 = digitalRead(TrackSensor4);
 
 	if (TrackSensorValue1 == HIGH && TrackSensorValue2 == LOW && TrackSensorValue3 == LOW && TrackSensorValue4 == LOW) {
-		spin_left(40 * speed_rate, 30 * speed_rate);
+		spin_left(40 * speed_rate, 30 * speed_rate * buff);
 	} else if (TrackSensorValue1 == LOW && TrackSensorValue2 == LOW && TrackSensorValue3 == LOW &&
 			   TrackSensorValue4 == HIGH) {
-		spin_right(30 * speed_rate, 40 * speed_rate);
+		spin_right(30 * speed_rate, 40 * speed_rate * buff);
 	}
 //		else if (TrackSensorValue2 == HIGH && TrackSensorValue3 == LOW)
 //		{
@@ -184,7 +202,7 @@ void route1() {
 		running = 0;
 		return;
 	} else if (TrackSensorValue2 == HIGH || TrackSensorValue3 == HIGH) {
-		run(51 * speed_rate, 51 * speed_rate);
+		run(40 * speed_rate, 40 * speed_rate * buff);
 	}
 	delay(2);
 }
@@ -196,14 +214,14 @@ void route2() {
 		run(51 * speed_rate, 51 * speed_rate);
 		return;
 	}
-	if ((timerCnt > 90 && timerCnt < 110) || timerCnt > 170) {
+	if ((timerCnt > 90 && timerCnt < 110) || timerCnt > 175) {
 		if (TrackSensorValue1 + TrackSensorValue2 + TrackSensorValue3 + TrackSensorValue4 >= 3 && interval == 0) {
 			bluetoothSerial.print('o');
 			interval = 5;
 			lineCnt++;
 			if (lineCnt == 1) {
 				bluetoothSerial.print('a');
-				run(20 * speed_rate, 20 * speed_rate);
+				run(20 * speed_rate, 20 * speed_rate * buff);
 				delay(200);
 			} else if (lineCnt == 2) {
 				bluetoothSerial.print('b');
@@ -226,13 +244,13 @@ void route2() {
 		if(timerCnt < 110 && timerCnt > 90 && lineCnt == 0){
 			goto direct;
 		}
-		spin_left(51 * speed_rate, 51 * speed_rate);
+		spin_left(51 * speed_rate, 51 * speed_rate * buff);
 		delay(150);
 	} else if (TrackSensorValue1 == HIGH) {
 		if(timerCnt < 110 && timerCnt > 90 && lineCnt == 0){
 			goto direct;
 		}
-		spin_left(51 * speed_rate, 51 * speed_rate);
+		spin_left(51 * speed_rate, 51 * speed_rate * buff);
 		delay(2);
 	} else if ((/*TrackSensorValue1 == HIGH ||*/ TrackSensorValue2 == HIGH) && TrackSensorValue4 == HIGH &&
 			   timerCnt > 7) {
@@ -240,51 +258,49 @@ void route2() {
 		if(timerCnt < 110 && timerCnt > 90 && lineCnt == 0){
 			goto direct;
 		}
-		spin_right(51 * speed_rate, 51 * speed_rate);
+		spin_right(51 * speed_rate, 51 * speed_rate * buff);
 		delay(150);
 	} else if (TrackSensorValue4 == HIGH && timerCnt > 7) {
 		if(timerCnt < 110 && timerCnt > 90 && lineCnt == 0){
 			goto direct;
 		}
-		spin_right(51 * speed_rate, 51 * speed_rate);
+		spin_right(51 * speed_rate, 51 * speed_rate * buff);
 		delay(2);
 	} else if (TrackSensorValue1 == LOW && TrackSensorValue2 == HIGH && TrackSensorValue3 == LOW &&
 			   TrackSensorValue4 == LOW) {
-		if (timerCnt < 110 && timerCnt > 70 && lineCnt == 0) {
-			left(30 * speed_rate, 30 * speed_rate);
+		if (timerCnt < 110 && timerCnt > 75 && lineCnt == 0) {
+			left(30 * speed_rate, 30 * speed_rate * buff);
 			return;
 		}
-		left(44 * speed_rate, 44 * speed_rate);
+		left(44 * speed_rate, 44 * speed_rate* buff);
 	} else if (TrackSensorValue1 == LOW && TrackSensorValue2 == LOW && TrackSensorValue3 == HIGH &&
 			   TrackSensorValue4 == LOW) {
-		if (timerCnt < 110 && timerCnt > 70 && lineCnt == 0) {
-			right(30 * speed_rate, 30 * speed_rate);
+		if (timerCnt < 110 && timerCnt > 75 && lineCnt == 0) {
+			right(30 * speed_rate, 30 * speed_rate * buff);
 			return;
 		}
-		right(44 * speed_rate, 44 * speed_rate);
+		right(44 * speed_rate, 44 * speed_rate * buff);
 	} else if (TrackSensorValue2 == HIGH && TrackSensorValue3 == HIGH) {
 		direct:
-		run(30 * speed_rate, 30 * speed_rate);
+		run(30 * speed_rate, 30 * speed_rate * buff);
 	}
 }
 
 
 void ifStart() {
-	while (1) {
+	while (running == 0) {
 		if (bluetoothSerial.available()) {
 			bluetoothSerial.read();
 			timerCnt = 0;
 			lineCnt = 0;
+			running = 1;
 			break;
 		}
 	}
 }
 
 void loop() {
-	if (running == 0) {
-		ifStart();
-		running = 1;
-	}
+	ifStart();
 //	route1();
 	route2();
 }
